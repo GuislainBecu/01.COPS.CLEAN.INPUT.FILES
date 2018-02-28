@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+/data/input.files.*/
+/res/backup/
+.DS_store
