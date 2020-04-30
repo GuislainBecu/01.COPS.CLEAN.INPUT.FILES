@@ -13,7 +13,12 @@ read_cops <- function(file) {
   irradiance_pattern <- "edz\\d{3}|luz\\d{3}|euz\\d{3}|ed0\\d{3}"
   depth.pattern <- "EuZDepth\\LuZDepth"
   
-  df <- data.table::fread(file) %>%
+  
+  df <- readLines(file)
+  df <- gsub("\t\t", "\t", df)
+  
+  df<- data.table::fread(text = df) %>%
+  #df<- data.table::fread(df) %>%
     setNames(gsub("[^[:alnum:] ]", "", names(.))) %>%
     setNames(gsub("\\s\\w","", names(.))) %>% 
     setNames(gsub("\\s$","", names(.))) %>% 

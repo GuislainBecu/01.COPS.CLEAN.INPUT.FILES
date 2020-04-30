@@ -17,7 +17,7 @@ ui <- fluidPage(theme = "bootstrap.css",
                                tags$head(tags$style(type="text/css", ".well { max-width: 2000px; }")),
                                tags$style(".well {background-color:lightblue;}"),
                                HTML('<center><img src="cops.png", alt = "C-OPS wet unit",
-           height = "200", width = "200"></center>'),
+                                                  height = "200", width = "200"></center>'),
                                shinyDirButton("dir", "Chose directory", "Upload"),
                                tags$br(),
                                helpText("current DIR"),
@@ -28,7 +28,8 @@ ui <- fluidPage(theme = "bootstrap.css",
                                tags$br(),
                                helpText("current file being processed"),
                                verbatimTextOutput("spy"),
-                               actionButton(inputId = "previous.file", label = "previous file", icon = icon(name = "arrow-circle-left"),
+                               actionButton(inputId = "previous.file", label = "previous file", 
+                                            icon = icon(name = "arrow-circle-left"),
                                             style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
                                actionButton(inputId = "next.file", icon = icon(name = "arrow-circle-right"),
                                             style="color: #fff; background-color: #337ab7; border-color: #2e6da4",
@@ -37,7 +38,7 @@ ui <- fluidPage(theme = "bootstrap.css",
                   mainPanel(width = 12,
                             column(width = 12, offset = 0, class = "well",
                                    helpText("PLOT #1 - draw a rectangle to zoom on the selected 
-                data (dbl click to reset, result appears in PLOT #2)"),
+                                            data (dbl click to reset, result appears in PLOT #2)"),
                                    fluidRow(
                                      column(width = 12,
                                             plotOutput("copsPlot", height = 500,
@@ -47,8 +48,8 @@ ui <- fluidPage(theme = "bootstrap.css",
                                                        )))),
                                    tags$br(),
                                    helpText("PLOT #2 - click or draw a rectangle and click 'toggle points' 
-                to discard / reselect the data (click 'reset' to reset) - 
-                kept points are black circles, discarded points are hollow circles"),
+                                            to discard / reselect the data (click 'reset' to reset) - 
+                                            kept points are black circles, discarded points are hollow circles"),
                                    fluidRow(
                                      column(width = 12,
                                             plotOutput("copsPlotZoom", height = 500,
@@ -77,9 +78,9 @@ ui <- fluidPage(theme = "bootstrap.css",
                                             textOutput("nb_total_points"))
                                    ),
                                    HTML('<hr style="height: 6px;
-                              color: lightblue;
-                              background-color: lightblue;
-                              border: none"'),
+                                        color: lightblue;
+                                        background-color: lightblue;
+                                        border: none"'),
                                    fluidRow(actionButton("save","Save this file"),
                                             helpText("While creating the output file, a boolean column (called 'flag') will be added to the input file ones:"),
                                             helpText(" - 'FALSE' for discarded measurements,"),
@@ -108,31 +109,33 @@ server <- function(input, output, session) {
   observe({
     if (!is.null(list.files(path()))){ # ./data/input.files is not empty
       extension.1er.fichier <- get.ext(list.files(path())[1])[[1]] # if another one, got tsv files?
-      if (extension.1er.fichier == "tsv") i.file$cpt <- 1
+      if (extension.1er.fichier == "tsv" | extension.1er.fichier == "csv") i.file$cpt <- 1
     }
   })
   
   # path function, used to fill in the output$files verbatim text and populate the files list
   path <- reactive({
     home <- normalizePath("./")
+    req(is.list(input$dir))
     file.path(home, paste(unlist(dir()$path[-1]), collapse = .Platform$file.sep))
   })
   
   # print currently chosen dir in the top verbatim text box
-  shinyDirChoose(input, 'dir', roots = c(home = './'), filetypes = c('tsv'))
+  shinyDirChoose(input, 'dir', roots = c(home = './'), filetypes = c('tsv','csv'))
   dir <- reactive(input$dir)
   current.dir <- reactive({parseDirPath(c(home = './'), input$dir)})
   output$dir <- renderPrint({parseDirPath(c(home = './'), input$dir)})
   
   # print all files located in the currently chosendir in the bottom verbatim text box
   output$files <- renderPrint(unlist(list.files(path())))
-  
+
   # get them whenever the brush is used 
   observe({
     brush <- input$plot1_brush
     if (!is.null(brush)) {
       ranges$x <- c(brush$xmin, brush$xmax)
-      ranges$y <- c(brush$ymin, brush$ymax)}
+      ranges$y <- c(brush$ymin, brush$ymax)
+    }
     else {
       ranges$x <- NULL
       ranges$y <- NULL}
@@ -175,9 +178,10 @@ server <- function(input, output, session) {
       if (is.null(inFile)) return(NULL)
       data <- read_cops(paste(parseDirPath(c(home = './'), input$dir),"/", inFile,sep=""))
       data1 <- data %>%
-        mutate(date.time.num = as.numeric(as.POSIXct(DateTime, format = "%m/%d/%Y %I:%M:%S %p")) + Millisecond/1000) %>%
+        #mutate(date.time.num = as.numeric(as.POSIXct(DateTime, format = "%m/%d/%Y %I:%M:%S %p")) + Millisecond/1000) %>%
+        mutate(date.time.num = as.numeric(as.POSIXct(DateTime, format = "%Y-%m-%d %I:%M:%S %p")) + Millisecond/1000) %>%
         mutate(date.time.num = ((date.time.num-date.time.num[1]))/60)# %>% 
-        #select(Depth = contains("Depth", ignore.case = T), everything())
+        #dplyr::select(Depth = contains("Depth", ignore.case = T), everything())
         #ifelse(any(grepl("EuZDepth", names(data))), depth.type() <- "EuZDepth", depth.type() <-"LuZDepth")
         #ifelse(any(grepl("EuZDepth", names(data))), observe({mydepth$type = "EuZDepth"}), observe({mydepth$type = "LuZDepth"}))
       if (any(grepl("^EuZDepth$", names(data1)))) {
@@ -294,7 +298,7 @@ server <- function(input, output, session) {
         theme_bw() +
         xlab("Time elapsed since start of file recording (min)") +
         ylab("Depth (m)") +
-        coord_cartesian(xlim = ranges$x, ylim = ranges$y)}
+        coord_cartesian(xlim = ranges$x, ylim = rev(ranges$y))}
   })
   
   # save output files. Save 2 versions, one woth the flag column in "/res/flagged/",
@@ -305,14 +309,14 @@ server <- function(input, output, session) {
     keep <- df[ vals$keeprows, , drop = FALSE]
     exclude <- df[!vals$keeprows, , drop = FALSE]
     df <- df %>% 
-      select(-Depth, -date.time.num)
+      dplyr::select(-Depth, -date.time.num)
     df.flagged <- df
     all.false = rep(FALSE, nrow(df.flagged))
     df.flagged$flag <- all.false
     df.flagged$flag[vals$keeprows] <- TRUE
     df.cleaned <- df.flagged %>% 
       filter(flag == "TRUE") %>% 
-      select(-flag)
+      dplyr::select(-flag)
     write.table(df.flagged, file= paste("./res/flagged/",inFile,sep=""), row.names = FALSE, append = FALSE, sep = "\t")
     write.table(df.cleaned, file= paste("./res/cleaned/",inFile,sep=""), row.names = FALSE, append = FALSE, sep = "\t")
   })
